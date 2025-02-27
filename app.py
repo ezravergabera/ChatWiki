@@ -13,6 +13,21 @@ from dotenv import load_dotenv
 from llama_index.llms.gemini import Gemini
 from llama_index.embeddings.gemini import GeminiEmbedding
 
+import nltk
+
+# Set NLTK data path to a writable directory
+nltk_data_dir = os.path.join(os.path.expanduser("~"), "nltk_data")
+os.makedirs(nltk_data_dir, exist_ok=True)
+nltk.data.path.append(nltk_data_dir)
+
+# Pre-download required NLTK data packages
+try:
+    nltk.download('stopwords', download_dir=nltk_data_dir, quiet=True)
+    nltk.download('punkt', download_dir=nltk_data_dir, quiet=True)
+    nltk.download('averaged_perceptron_tagger', download_dir=nltk_data_dir, quiet=True)
+except Exception as e:
+    st.error(f"Failed to download NLTK data: {e}")
+
 load_dotenv()
 
 api_key = os.getenv("GENAI_API_KEY")
