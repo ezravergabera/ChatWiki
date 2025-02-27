@@ -15,6 +15,8 @@ from llama_index.embeddings.gemini import GeminiEmbedding
 
 load_dotenv()
 
+os.environ["NLTK_DATA"] = os.path.expanduser("~/.nltk_data")
+
 api_key = os.getenv("GENAI_API_KEY")
 if not api_key:
     st.error("⚠️ GENAI_API_KEY not found in environment variables. Please add it to your .env file.")
