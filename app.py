@@ -7,29 +7,6 @@ from llama_index.core.settings import Settings
 import wikipedia
 import time as t
 
-# # Llama 3.2
-# from llama_index.llms.ollama import Ollama
-# from llama_index.embeddings.ollama import OllamaEmbedding
-
-# llm = Ollama(model="llama3.2")
-# embed_model = OllamaEmbedding(model_name="nomic-embed-text")
-
-# import os
-# from dotenv import load_dotenv
-# from llama_index.llms.anthropic import Anthropic
-# from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-
-# # Claude
-# load_dotenv()
-
-# api_key = os.getenv("ANTHROPIC_API_KEY")
-# if not api_key:
-#     st.error("⚠️ ANTHROPIC_API_KEY not found in environment variables. Please add it to your .env file.")
-#     st.stop()
-
-# llm = Anthropic(model="claude-3-haiku-20240307", api_key=api_key)
-# embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-small-en-v1.5")
-
 # Gemini
 import os
 from dotenv import load_dotenv
@@ -74,7 +51,6 @@ def extract_wikipedia_title(url):
     if not url:
         return None
     
-    # Extract the last part of the URL (after /wiki/)
     match = re.search(r"/wiki/([^/]+)$", url)
     if match:
         title = match.group(1).replace("_", " ")
@@ -87,6 +63,7 @@ def extract_wikipedia_title(url):
 def fetch_wikipedia_data(query):
     """Fetch Wikipedia data based on the user query.
     If the first search result fails, try the next available page."""
+    page_title = query  # Initialize page_title with query
     try:
         search_results = wikipedia.search(query)
 
@@ -119,11 +96,9 @@ def fetch_wikipedia_data(query):
         st.error(f"Error fetching Wikipedia data: {str(e)}")
         return [], page_title
     
-def generate_response(index, cleaned_query):
+def generate_response(index, cleaned_query, topic="General"):
     try:
         if index:
-            user_query = cleaned_query if cleaned_query else query
-
             QA_PROMPT_TMPL = """You are a helpful assistant.
             You will be given a query to answer, and a context from Wikipedia to help you answer the query.
             
@@ -142,14 +117,12 @@ def generate_response(index, cleaned_query):
                 text_qa_template=QA_PROMPT
             )
             
-            response = query_engine.query(user_query)
+            response = query_engine.query(cleaned_query)
             return response.response if hasattr(response, "response") else str(response)
         else:
-            return "Sorry, the knowledge base isn't available."
+            return "Sorry, the knowledge base isn't available. Please provide a Wikipedia URL to load a topic."
     except Exception as e:
         return f"An error occurred: {str(e)}"
-
-
 
 st.set_page_config(page_title="ChatWiki", layout="wide")
 st.title("📚 ChatWiki")
@@ -160,30 +133,8 @@ if "messages" not in st.session_state:
 if "topic" not in st.session_state:
     st.session_state.topic = "Artificial Intelligence"
 
-# st.sidebar.title("Current Wikipedia Topic")
-# st.sidebar.info(st.session_state.topic)
-
-# new_topic = st.sidebar.text_input("Change Topic:")
-# if st.sidebar.button("Load Topic") and new_topic:
-#     with st.spinner(f"Loading knowledge base for '{new_topic}'..."):
-#         wiki_docs = fetch_wikipedia_data(new_topic)
-#         if wiki_docs:
-#             st.session_state.index = VectorStoreIndex.from_documents(wiki_docs)
-#             st.session_state.topic = new_topic
-#             st.sidebar.success(f"Loaded '{new_topic}' successfully!")
-#             st.rerun()
-#         else:
-#             st.sidebar.error(f"Failed to load '{new_topic}'. Topic may not exist.")
-
-# if "index" not in st.session_state:
-#     st.info("Initializing knowledge base...")
-#     wiki_docs = fetch_wikipedia_data("Artificial Intelligence")
-#     if wiki_docs:
-#         st.session_state.index = VectorStoreIndex.from_documents(wiki_docs, use_async=True)
-#         st.success("Knowledge base ready!")
-#     else:
-#         st.error("Failed to initialize knowledge base.")
-#         st.session_state.index = None
+if "index" not in st.session_state:
+    st.session_state.index = None
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -201,48 +152,34 @@ if query:
         message_placeholder.markdown("Thinking...")
 
         cleaned_query, url = extract_url_and_query(query)
-
-        response_text = ""
-        st.session_state.index = ""
         loading_new_kb = False
+        response_text = ""
 
-        if st.session_state.index == "" and not url:
-            response_text = "No knowledge base loaded yet. Please provide a Wikipedia URL."
-            message_placeholder.markdown(response_text)
-        else:
-            if is_wikipedia_url(url) and cleaned_query != "":
-                wiki_title = extract_wikipedia_title(url)
-                if wiki_title:
-                    message_placeholder.markdown(f"Loading Wikipedia article: '{wiki_title}'...")
-                    loading_new_kb = True
+        if url and is_wikipedia_url(url):
+            wiki_title = extract_wikipedia_title(url)
+            if wiki_title:
+                message_placeholder.markdown(f"Loading Wikipedia article: '{wiki_title}'...")
+                loading_new_kb = True
+                
+                wiki_docs, new_wiki_title = fetch_wikipedia_data(wiki_title)
+                if wiki_docs:
+                    message_placeholder.markdown(f"Indexing article: '{new_wiki_title}'...")
+                    st.session_state.index = VectorStoreIndex.from_documents(wiki_docs)
+                    st.session_state.topic = wiki_title
                     
-                    wiki_docs, new_wiki_title = fetch_wikipedia_data(wiki_title)
-                    if wiki_docs:
-                        message_placeholder.markdown(f"Loading Wikipedia article: '{new_wiki_title}'...")
-                        st.session_state.index = VectorStoreIndex.from_documents(wiki_docs)
-                        st.session_state.topic = wiki_title
-                        message_placeholder.markdown(f"I've loaded information about '{wiki_title}'...")
-                        response_text = generate_response(st.session_state.index, cleaned_query)
+                    if cleaned_query:
+                        response_text = generate_response(st.session_state.index, cleaned_query, wiki_title)
                     else:
-                        message_placeholder.markdown(f"I couldn't load the Wikipedia article for '{wiki_title}'. The topic may not exist or there was an error fetching the data.")
-            elif is_wikipedia_url(url):
-                wiki_title = extract_wikipedia_title(url)
-                if wiki_title:
-                    message_placeholder.markdown(f"Loading Wikipedia article: '{wiki_title}'...")
-                    loading_new_kb = True
-                    
-                    wiki_docs, new_wiki_title = fetch_wikipedia_data(wiki_title)
-                    if wiki_docs:
-                        message_placeholder.markdown(f"Loading Wikipedia article: '{new_wiki_title}'...")
-                        st.session_state.index = VectorStoreIndex.from_documents(wiki_docs)
-                        st.session_state.topic = wiki_title
-                        response_text = f"I've loaded information about '{wiki_title}'. What do you want to know?"
-                    else:
-                        response_text = f"I couldn't load the Wikipedia article for '{wiki_title}'. The topic may not exist or there was an error fetching the data."
+                        response_text = f"I've loaded information about '{wiki_title}'. What would you like to know?"
+                else:
+                    response_text = f"I couldn't load the Wikipedia article for '{wiki_title}'. The topic may not exist or there was an error fetching the data."
+        
+        elif not loading_new_kb:
+            if st.session_state.index is None:
+                response_text = "No knowledge base loaded yet. Please provide a Wikipedia URL to get started."
+            else:
+                response_text = generate_response(st.session_state.index, cleaned_query, st.session_state.topic)
 
-            if not loading_new_kb:
-                response_text = generate_response(st.session_state.index, cleaned_query)
-
-            message_placeholder.markdown(response_text)  
-
+        message_placeholder.markdown(response_text)
+        
     st.session_state.messages.append({"role": "assistant", "content": response_text})
