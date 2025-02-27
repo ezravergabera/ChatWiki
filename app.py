@@ -12,12 +12,25 @@ import os
 from dotenv import load_dotenv
 from llama_index.llms.gemini import Gemini
 from llama_index.embeddings.gemini import GeminiEmbedding
-import nltk
-nltk.download('stopwords')
 
 load_dotenv()
 
-os.environ["NLTK_DATA"] = os.path.expanduser("~/.nltk_data")
+import nltk
+
+nltk_data_path = st.secrets.get("NLTK_DATA")
+if nltk_data_path:
+    nltk.data.path.append(nltk_data_path)
+    try:
+        nltk.data.find("corpora/stopwords")
+    except LookupError:
+        nltk.download('stopwords', download_dir=nltk_data_path)
+    try:
+        nltk.data.find("tokenizers/punkt")
+    except LookupError:
+        nltk.download('punkt', download_dir=nltk_data_path)
+else:
+    st.error("NLTK_DATA secret not set.")
+    st.stop()
 
 api_key = os.getenv("GENAI_API_KEY")
 if not api_key:
