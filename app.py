@@ -148,7 +148,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "topic" not in st.session_state:
-    st.session_state.topic = "Artificial Intelligence"
+    st.session_state.topic = "General"
 
 if "index" not in st.session_state:
     st.session_state.index = None
@@ -193,7 +193,7 @@ if query:
         
         elif not loading_new_kb:
             if st.session_state.index is None:
-                response_text = "No knowledge base loaded yet. Please provide a Wikipedia URL to get started."
+                response_text = generate_response(st.session_state.index, cleaned_query, st.session_state.topic)
             else:
                 response_text = generate_response(st.session_state.index, cleaned_query, st.session_state.topic)
 
