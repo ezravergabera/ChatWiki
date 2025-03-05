@@ -116,11 +116,26 @@ def fetch_wikipedia_data(query):
 def generate_response(index, cleaned_query, topic="General"):
     try:
         if topic == "General" or index is None:
-            return llm.complete("""You are a helpful assistant.
-                Your task is to look into a Wikipedia through a tool named WikipediaReader.
-                Answer the following question:\n\n{cleaned_query} but first let them know about your capabitility by telling them
-                that you can use any wikipedia url they provide as a reference."""
-                )
+            LLM_PROMPT_TMPL = """You are a highly knowledgeable and helpful AI assistant.
+            Answer the following user query in a clear and informative way.
+
+            Query: {query_str}
+
+            Your response should be concise, fact-based, and easy to understand."""
+
+            # Format the template with the user's query
+            formatted_prompt = LLM_PROMPT_TMPL.format(query_str=cleaned_query)
+
+            # Get the LLM-generated response
+            llm_response = llm.complete(formatted_prompt)
+
+            # Add an informational message about Wikipedia usage
+            info_message = (
+                "\n\n💡 Tip: If you want a more detailed answer from Wikipedia, "
+                "provide a Wikipedia URL in your query!"
+            )
+
+            return llm_response + info_message
         
         if index:
             QA_PROMPT_TMPL = """You are a helpful assistant.
