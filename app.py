@@ -127,7 +127,7 @@ def generate_response(index, cleaned_query, topic="General"):
             formatted_prompt = LLM_PROMPT_TMPL.format(query_str=cleaned_query)
 
             # Get the LLM-generated response
-            llm_response = llm.complete(formatted_prompt)
+            llm_response = llm.complete(formatted_prompt).text
 
             # Add an informational message about Wikipedia usage
             info_message = (
