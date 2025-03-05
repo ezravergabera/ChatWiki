@@ -115,6 +115,13 @@ def fetch_wikipedia_data(query):
     
 def generate_response(index, cleaned_query, topic="General"):
     try:
+        if topic == "General" or index is None:
+            return llm.complete("""You are a helpful assistant.
+                Your task is to look into a Wikipedia through a tool named WikipediaReader.
+                Answer the following question:\n\n{cleaned_query} but first let them know about your capabitility by telling them
+                that you can use any wikipedia url they provide as a reference."""
+                )
+        
         if index:
             QA_PROMPT_TMPL = """You are a helpful assistant.
             You will be given a query to answer, and a context from Wikipedia to help you answer the query.
@@ -127,29 +134,6 @@ def generate_response(index, cleaned_query, topic="General"):
             
             Try to use the provided context to answer the query, and do not try to guess if you don't have the needed information.
             Always be helpful and informative."""
-            
-            QA_PROMPT = PromptTemplate(template=QA_PROMPT_TMPL)
-
-            query_engine = index.as_query_engine(
-                text_qa_template=QA_PROMPT
-            )
-            
-            response = query_engine.query(cleaned_query)
-            return response.response if hasattr(response, "response") else str(response)
-        else:
-            QA_PROMPT_TMPL = """You are a helpful assistant.
-            Your task is to look into a Wikipedia through a tool named WikipediaReader.
-            You will be given a query to answer, and a context from Wikipedia to help you answer the query.
-            
-            Current Wikipedia Topic: {topic}
-            
-            Context: {context_str}
-            
-            Query: {query_str}
-            
-            Try to use the provided context to answer the query, and do not try to guess if you don't have the needed information.
-            Always be helpful and informative. If they haven't included a Wikipedia URL in their query, you can respond to tell them
-            to either to provide a Wikipedia URL or stay in the current topic which should be General."""
             
             QA_PROMPT = PromptTemplate(template=QA_PROMPT_TMPL)
 
