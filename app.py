@@ -126,7 +126,8 @@ def generate_response(index, cleaned_query, topic="General"):
             Query: {query_str}
             
             Try to use the provided context to answer the query, and do not try to guess if you don't have the needed information.
-            Always be helpful and informative."""
+            Always be helpful and informative. If they haven't included a Wikipedia URL in their query, you can respond to tell them
+            to either to provide a Wikipedia URL or stay in the current topic which is General."""
             
             QA_PROMPT = PromptTemplate(template=QA_PROMPT_TMPL)
 
